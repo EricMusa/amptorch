@@ -1,0 +1,23 @@
+#!/bin/bash -l
+#SBATCH -J cu_on_zno_02
+#SBATCH --time=24:00:00
+#SBATCH -N 4
+#SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=1
+#SBATCH -q regular
+#SBATCH --mail-user=ericmusa@umich.edu
+#SBATCH --mail-type=ALL
+#SBATCH -o cu_on_zno_%j.stdout
+#SBATCH -e cu_on_zno_%j.stderr
+#SBATCH -L SCRATCH
+#SBATCH -C knl
+
+export VASP_PP_PATH=$HOME/potential
+export ASE_VASP_VDW=$HOME/vdw_kernel
+
+module load python3
+module load vasp/5.4.4-knl
+
+source activate gaxml4
+
+python cu_on_zno.py >> cu_on_zno_02.out

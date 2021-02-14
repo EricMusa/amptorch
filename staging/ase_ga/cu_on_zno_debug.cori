@@ -1,0 +1,23 @@
+#!/bin/bash -l
+#SBATCH -J morse_fitting_debug_01
+#SBATCH --time=00:30:00
+#SBATCH -N 4
+#SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=1
+#SBATCH -q debug
+#SBATCH --mail-user=ericmusa@umich.edu
+#SBATCH --mail-type=ALL
+#SBATCH -o morse_fitting_debug_01_%j.stdout
+#SBATCH -e morse_fitting_debug_01_%j.stderr
+#SBATCH -L SCRATCH
+#SBATCH -C knl
+
+export VASP_PP_PATH=$HOME/potential
+export ASE_VASP_VDW=$HOME/vdw_kernel
+
+module load python3
+module load vasp/5.4.4-knl
+
+source activate gaxml4
+
+python morse_fitting.py >> morse_fitting_debug_01.out
