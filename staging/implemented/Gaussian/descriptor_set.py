@@ -29,7 +29,14 @@ class GaussianDescriptorSet:
         self.descriptor_setup_hash = None
 
     def batch_add_descriptors(
-        self, number, param1s, param2s, param3s=None, important_elements=None, cutoff=None, update=True
+        self,
+        number,
+        param1s,
+        param2s,
+        param3s=None,
+        important_elements=None,
+        cutoff=None,
+        update=True,
     ):
         for element_i in important_elements or self.elements:
             for j, element_j in enumerate(self.elements):

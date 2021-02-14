@@ -138,7 +138,7 @@ class Gaussian(BaseDescriptor):
                         zeta,
                         gamma,
                     )
-                    for eta in Gs["G5"]["etas"]
+                    for eta in (np.array(Gs["G5"]["etas"]) / cutoff ** 2)
                     for zeta in Gs["G5"]["zetas"]
                     for gamma in Gs["G5"]["gammas"]
                     for i in range(len(element_indices))

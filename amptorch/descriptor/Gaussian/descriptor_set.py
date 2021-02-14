@@ -29,14 +29,22 @@ class GaussianDescriptorSet:
         self.descriptor_setup_hash = None
 
     def batch_add_descriptors(
-        self, number, param1s, param2s, param3s, cutoff=None, update=True
+        self,
+        number,
+        param1s,
+        param2s,
+        param3s=None,
+        important_elements=None,
+        cutoff=None,
+        update=True,
     ):
-        for element_i in self.elements:
+        for element_i in important_elements or self.elements:
             for j, element_j in enumerate(self.elements):
                 if number == 2:
                     for eta, rs in zip(param1s, param2s):
                         self.add_g2(element_i, element_j, eta, rs, cutoff, False)
                 else:
+                    assert param3s
                     for element_k in self.elements[j:]:
                         for eta, zeta, gamma in zip(param1s, param2s, param3s):
                             if number == 4:
@@ -132,7 +140,7 @@ class GaussianDescriptorSet:
             self.element_indices[self.elements.index(element_j)],
             self.element_indices[self.elements.index(element_k)],
             cutoff or self.cutoff,
-            eta,
+            eta / (cutoff or self.cutoff) ** 2.0,
             zeta,
             gamma,
         )

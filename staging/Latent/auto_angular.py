@@ -7,13 +7,18 @@ from amptorch.trainer import AtomsTrainer
 from ase.io import read
 
 relaxations = {}
-for fname in os.listdir('cu8_on_zno'):
+for fname in os.listdir("cu8_on_zno"):
     if fname.endswith(".traj"):
-        print('loading %s' % fname)
-        relaxations[fname.replace('.traj', '')] = read(os.path.join('cu8_on_zno', fname), index=':')
-        print('%s loaded, %d images' % (fname, len(relaxations[fname.replace('.traj', '')])))
-        
-print('total images:', sum(len(v) for v in relaxations.values()))
+        print("loading %s" % fname)
+        relaxations[fname.replace(".traj", "")] = read(
+            os.path.join("cu8_on_zno", fname), index=":"
+        )
+        print(
+            "%s loaded, %d images"
+            % (fname, len(relaxations[fname.replace(".traj", "")]))
+        )
+
+print("total images:", sum(len(v) for v in relaxations.values()))
 all_images = [_ for rel in relaxations.values() for _ in rel]
 seed = 123
 np.random.seed(seed)
@@ -29,17 +34,26 @@ cosine_cutoff_params = {"cutoff_func": "cosine"}
 
 gds = GaussianDescriptorSet(elements, cutoff, cosine_cutoff_params)
 
-low_res_g2 = (2, [.025, .025], [0., 3.])
+low_res_g2 = (2, [0.025, 0.025], [0.0, 3.0])
 # low_res_g5 = (5, [.001, .001], [2.0, 2.0], [-1., 1.])
-low_res_g5 = (5, [.001], [1.0], [1.])
+low_res_g5 = (5, [0.001], [1.0], [1.0])
 low_res_elements = ["O", "Zn"]
 
 gds.batch_add_descriptors(*low_res_g2, important_elements=low_res_elements)
 gds.batch_add_descriptors(*low_res_g5, important_elements=low_res_elements)
 
 
-hi_res_g2 = (2, [.025, .025, .25, .25], [0., 3., 0., 3.])
-hi_res_g5 = (5, [.001, .001, .001,], [1.0, 4.0, 1.0], [1., 1., -1.])
+hi_res_g2 = (2, [0.025, 0.025, 0.25, 0.25], [0.0, 3.0, 0.0, 3.0])
+hi_res_g5 = (
+    5,
+    [
+        0.001,
+        0.001,
+        0.001,
+    ],
+    [1.0, 4.0, 1.0],
+    [1.0, 1.0, -1.0],
+)
 hi_res_elements = ["Cu"]
 
 gds.batch_add_descriptors(*low_res_g2, important_elements=hi_res_elements)
@@ -60,7 +74,7 @@ config = {
         "batch_size": 32,
         "epochs": 100,
         "loss": "mse",
-        "metric": "mae", 
+        "metric": "mae",
         "gpus": 0,
     },
     "dataset": {

@@ -258,10 +258,10 @@ class AtomsTrainer:
         self.net.module.eval()
         collate_fn = DataCollater(train=False, forcetraining=self.forcetraining)
 
-        predictions = {"energy": [], "forces": []}
+        predictions = {"energy": [], "forces": [], "latent": []}
         for data in data_list:
             collated = collate_fn([data]).to(self.device)
-            energy, forces = self.net.module([collated])
+            energy, forces, latent = self.net.module([collated])
 
             energy = self.target_scaler.denorm(
                 energy.detach().cpu(), pred="energy"
@@ -269,9 +269,11 @@ class AtomsTrainer:
             forces = self.target_scaler.denorm(
                 forces.detach().cpu(), pred="forces"
             ).numpy()
+            latent = latent.detach().numpy()
 
             predictions["energy"].extend(energy)
             predictions["forces"].append(forces)
+            predictions["latent"].append(latent)
 
         return predictions
 

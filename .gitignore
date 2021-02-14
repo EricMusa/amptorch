@@ -1,6 +1,7 @@
 #python
 __pycache__/
 *.pyc
+*.pyd
 
 #output files
 *.ampdb
@@ -33,3 +34,6 @@ md_work/*
 *build/
 amptorch/descriptor/Gaussian/_libsymf.abi3.so
 amptorch/descriptor/MCSH/_libmcsh.abi3.so
+
+#specified to ignore
+**.ignore
