@@ -1,33 +1,14 @@
 import numpy as np
 import os
+from skorch.callbacks import EarlyStopping
 import torch
 from amptorch.ase_utils import AMPtorch
 from amptorch.descriptor.Gaussian import GaussianDescriptorSet
 from amptorch.trainer import AtomsTrainer
 from ase.io import read
 
-# relaxations = {}
-# for fname in os.listdir("cu8_on_zno"):
-#     if fname.endswith(".traj"):
-#         print("loading %s" % fname)
-#         relaxations[fname.replace(".traj", "")] = read(
-#             os.path.join("cu8_on_zno", fname), index=":"
-#         )
-#         print(
-#             "%s loaded, %d images"
-#             % (fname, len(relaxations[fname.replace(".traj", "")]))
-#         )
-
-# print("total images:", sum(len(v) for v in relaxations.values()))
-# all_images = [_ for rel in relaxations.values() for _ in rel]
-# seed = 123
-# np.random.seed(seed)
-# sample_size = 200
-# print("selecting subset of %d images for training" % sample_size)
-# images = np.random.choice(np.arange(len(all_images)), size=sample_size)
-# images = [all_images[i] for i in images]
-
-images = read('mldb.db', index=':')
+images = read('mldb.db', index=':50')
+print('%d images loaded' % len(images))
 
 elements = np.unique([atom.symbol for atom in images[0]])
 cutoff = 6.0
@@ -39,7 +20,7 @@ gds = GaussianDescriptorSet(elements, cutoff, cosine_cutoff_params)
 low_res_g2 = (2, [0.025, 0.025], [0.0, 3.0])
 # low_res_g5 = (5, [.001, .001], [2.0, 2.0], [-1., 1.])
 low_res_g5 = (5, [0.001], [1.0], [1.0])
-low_res_elements = ["O", "Zn"]
+low_res_elements = ["Au"]
 
 gds.batch_add_descriptors(*low_res_g2, important_elements=low_res_elements)
 gds.batch_add_descriptors(*low_res_g5, important_elements=low_res_elements)
@@ -56,7 +37,7 @@ hi_res_g5 = (
     [1.0, 4.0, 1.0],
     [1.0, 1.0, -1.0],
 )
-hi_res_elements = ["Cu"]
+hi_res_elements = ["Pt", "Ag"]
 
 gds.batch_add_descriptors(*low_res_g2, important_elements=hi_res_elements)
 gds.batch_add_descriptors(*low_res_g5, important_elements=hi_res_elements)
@@ -78,6 +59,7 @@ config = {
         "loss": "mse",
         "metric": "mae",
         "gpus": 0,
+        "callbacks": [EarlyStopping(patience=25, threshold=.01)],
     },
     "dataset": {
         "raw_data": images,
@@ -101,7 +83,9 @@ config = {
 
 torch.set_num_threads(1)
 trainer = AtomsTrainer(config)
+print('trainer loaded')
 trainer.train()
+print('trainer trained')
 
 predictions = trainer.predict(images)
 

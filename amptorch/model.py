@@ -1,4 +1,3 @@
-from .latent_model import LatentMLP
 import torch
 import torch.nn as nn
 from torch.autograd import grad
@@ -15,6 +14,7 @@ class MLP(nn.Module):
         activation,
         batchnorm,
         n_output_nodes=1,
+        latent=False, 
     ):
         super(MLP, self).__init__()
         if isinstance(n_hidden_size, int):
@@ -29,6 +29,8 @@ class MLP(nn.Module):
                 layers.append(nn.BatchNorm1d(self.n_neurons[_ + 1]))
         layers.append(nn.Linear(self.n_neurons[-2], self.n_neurons[-1]))
         self.model_net = nn.Sequential(*layers)
+        self.latent = latent
+        self._forward = self._lat_forward if latent else self._reg_forward
 
         # TODO: identify optimal initialization scheme
         # self.reset_parameters()
@@ -40,7 +42,14 @@ class MLP(nn.Module):
                 m.bias.data.fill_(0)
 
     def forward(self, inputs):
+        return self._forward(inputs)
+    
+    def _reg_forward(self, inputs):
         return self.model_net(inputs)
+    
+    def _lat_forward(self, inputs):
+        latents = self.model_net[:-1](inputs)
+        return self.model_net[-1](latents), latents
 
 
 class LatentMLP(nn.Module):
@@ -115,15 +124,15 @@ class BPNN(nn.Module):
         n_elements = len(elements)
         self.elementwise_models = nn.ModuleList()
         self.latent = latent
-        NNModule = LatentMLP if self.latent else MLP
         for element in range(n_elements):
             self.elementwise_models.append(
-                NNModule(
+                MLP(
                     n_input_nodes=input_dim,
                     n_layers=num_layers,
                     n_hidden_size=num_nodes,
                     activation=activation,
                     batchnorm=batchnorm,
+                    latent=latent
                 )
             )
 

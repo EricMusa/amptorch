@@ -8,7 +8,7 @@ from amptorch.utils import target_extractor
 
 def mae_energy_score(net, X, y):
     mae_loss = L1Loss()
-    energy_pred, _ = net.forward(X)
+    energy_pred = net.forward(X)[0]
     if isinstance(X, torch.utils.data.Subset):
         X = X.dataset
     energy_pred = X.target_scaler.denorm(energy_pred, pred="energy")
@@ -22,7 +22,7 @@ def mae_energy_score(net, X, y):
 
 def mae_forces_score(net, X, y):
     mae_loss = L1Loss()
-    _, force_pred = net.forward(X)
+    force_pred = net.forward(X)[1]
     if isinstance(X, torch.utils.data.Subset):
         X = X.dataset
     force_pred = X.target_scaler.denorm(force_pred, pred="forces")
@@ -36,7 +36,7 @@ def mae_forces_score(net, X, y):
 
 def mse_energy_score(net, X, y):
     mse_loss = MSELoss()
-    energy_pred, _ = net.forward(X)
+    energy_pred = net.forward(X)[0]
     if isinstance(X, torch.utils.data.Subset):
         X = X.dataset
     energy_pred = X.target_scaler.denorm(energy_pred, pred="energy")
@@ -50,7 +50,7 @@ def mse_energy_score(net, X, y):
 
 def mse_forces_score(net, X, y):
     mse_loss = MSELoss()
-    _, force_pred = net.forward(X)
+    force_pred = net.forward(X)[1]
     if isinstance(X, torch.utils.data.Subset):
         X = X.dataset
     force_pred = X.target_scaler.denorm(force_pred, pred="forces")
