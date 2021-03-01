@@ -38,12 +38,14 @@ def get_hash(image):
 
 
 def validate_image(image):
-    for number in image.get_scaled_positions().flatten():
-        if number > 1.0 or number < 0.0:
-            raise ValueError(
-                "****ERROR: scaled position not strictly between [0, 1]"
-                "Please check atom position and system cell size are set up correctly"
-            )
+    image.wrap()
+    if np.any(image.get_scaled_positions() < 0.0) or np.any(
+        image.get_scaled_positions() > 1.0
+    ):
+        raise ValueError(
+            "****ERROR: scaled position not strictly between [0, 1]"
+            "Please check atom position and system cell size are set up correctly"
+        )
     return
 
 
