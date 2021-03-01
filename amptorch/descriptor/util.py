@@ -1,7 +1,7 @@
 import hashlib
 
 import numpy as np
-
+from ase.io import write
 from .constants import ATOM_INDEX_TO_SYMBOL_DICT, ATOM_SYMBOL_TO_INDEX_DICT
 
 # from ase.io.trajectory import Trajectory
@@ -38,12 +38,13 @@ def get_hash(image):
 
 
 def validate_image(image):
-    for number in image.get_scaled_positions().flatten():
-        if number > 1.0 or number < 0.0:
-            raise ValueError(
-                "****ERROR: scaled position not strictly between [0, 1]"
-                "Please check atom position and system cell size are set up correctly"
-            )
+    image.wrap()  # return atoms outside periodic boundaries to position inside cell
+    if np.any(image.get_scaled_positions() > 1.) or np.any(image.get_scaled_positions() > 1.):
+        # if atom outside boundaries on non-periodic face, throw error
+        raise ValueError(
+            "****ERROR: scaled position not strictly between [0, 1]"
+            "Please check atom position and system cell size are set up correctly"
+        )
     return
 
 
