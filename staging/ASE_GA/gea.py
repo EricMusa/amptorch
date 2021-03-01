@@ -31,8 +31,19 @@ def inverse_distance_density(data):
     dmat = squareform(pdist(data))
     inv_dmat = np.power((dmat + np.diag([np.inf for _ in range(len(dmat))])), -1.)
     point_densities = inv_dmat.sum(axis=0) / (len(inv_dmat) - 1.)
-    density = point_densities.sum() / 2.
+    density = point_densities.sum()  #  / np.power(len(inv_dmat) - 1., 1./3.)
     return density, point_densities, inv_dmat, dmat
+
+
+def n_nearest_neighbors(data, n_points=10, distances=True):
+    dmat = squareform(pdist(data))
+    n_nearest = np.array([dmat[i].argsort()[1:n_points+1] for i in range(len(dmat))])
+    if distances:
+        n_nearest = np.array([[dmat[i, j] for j in n_nearest[i]] for i in range(len(dmat))])
+    return n_nearest
+
+
+    
 
 
 class PCKDE:

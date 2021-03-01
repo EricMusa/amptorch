@@ -26,6 +26,7 @@ from amptorch.ase_utils import AMPtorch
 class AtomsTrainer:
     def __init__(self, config={}):
         self.config = config
+        self.model = None
         self.pretrained = False
 
     def load(self, load_dataset=True):
@@ -132,7 +133,7 @@ class AtomsTrainer:
 
     def load_model(self):
         elements = list_symbols_to_indices(self.elements)
-        self.model = BPNN(
+        self.model = self.model or BPNN(
             elements=elements, input_dim=self.input_dim, **self.config["model"]
         )
         print("Loading model: {} parameters".format(self.model.num_params))
@@ -225,9 +226,11 @@ class AtomsTrainer:
         )
         print("Loading skorch trainer")
 
-    def train(self, raw_data=None):
+    def train(self, raw_data=None, restart=False):
         if raw_data is not None:
             self.config["dataset"]["raw_data"] = raw_data
+        if restart:
+            self.model = None
         if not self.pretrained:
             self.load()
 

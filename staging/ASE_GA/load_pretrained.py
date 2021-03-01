@@ -4,11 +4,39 @@ import torch
 from amptorch.ase_utils import AMPtorch
 from amptorch.descriptor.Gaussian import GaussianDescriptorSet
 from amptorch.trainer import AtomsTrainer
+from skorch.callbacks import EarlyStopping
 from ase.io import read
 from gea import *
 
-images = read('mldb.db', index=':')  # 0:10')
-print('%d images loaded' % len(images))
+all_images = read('mldb.db', index=':')  # 0:10')
+energies = []
+indices = []
+for i, image in enumerate(all_images):
+    e = image.get_potential_energy() 
+    if e not in energies:
+        # print('new energy', e)
+        energies.append(e)
+    else:
+        print(i, 'in energies already, dupe')
+        indices.append(i)
+for i in indices[::-1]:
+    all_images.pop(i)
+    print('popped', i)
+
+print('%d images loaded' % len(all_images))
+
+traj_indices = []
+for i, atoms in enumerate(all_images[1:]):
+    if i == 0:
+        traj_indices.append({1})
+        continue
+    if atoms.get_potential_energy() > all_images[i].get_potential_energy():
+        traj_indices.append({i})
+    else:
+        traj_indices[-1].add(i)
+traj_indices = [sorted(t) for t in traj_indices]
+n_trajs = 5
+images = [all_images[i] for traj in traj_indices[:n_trajs] for i in traj]
 
 elements = np.unique([atom.symbol for atom in images[0]])
 cutoff = 6.0
@@ -56,13 +84,14 @@ config = {
         "force_coefficient": 0.25,
         "lr": 1e-2,
         "batch_size": 50,
-        "epochs": 5000,
+        "epochs": 100,
         "loss": "mse",
         "metric": "mae",
         "gpus": 0,
+        # "callbacks": [EarlyStopping(patience=25, threshold=.05)],
     },
     "dataset": {
-        "raw_data": images[:10],
+        "raw_data": images[:25],
         "val_split": 0.2,
         "fp_params": gds,  # either a GDS or the `Gs` dict can be passed here
         "save_fps": True,
@@ -83,10 +112,10 @@ config = {
 
 torch.set_num_threads(1)
 trainer = AtomsTrainer(config)
-trainer.load_pretrained('C:\\Users\\ericm\\Documents\\Research\\Code\\Amptorch\\staging\\ASE_GA\\checkpoints\\2021-02-16-04-24-09-test')
-# trainer.train()
-print('pretrained model loaded')
-predictions = trainer.predict(images[:200], disable_tqdm=False)
+# trainer.load_pretrained('C:\\Users\\ericm\\Documents\\Research\\Code\\Amptorch\\staging\\ASE_GA\\checkpoints\\2021-02-16-04-24-09-test')
+trainer.train()
+# print('pretrained model loaded')
+predictions = trainer.predict(images, disable_tqdm=False)
 
 # true_energies = np.array([image.get_potential_energy() for image in images])  # [:200]])
 # pred_energies = np.array(predictions["energy"])
@@ -97,26 +126,43 @@ predictions = trainer.predict(images[:200], disable_tqdm=False)
 # images[0].set_calculator(AMPtorch(trainer))
 # images[0].get_potential_energy()
 
-from gea import *
-latents = np.array(predictions['latent'])
+latents = np.array(predictions['latent'], dtype=np.float32)
+traj_latents = [[latents[i-1] for i in traj] for traj in traj_indices[:n_trajs]]
+indices = [_-1 for inds in traj_indices[:n_trajs] for _ in inds]
 n_components = 10
 pckde = PCKDE(latents, n_components)
-probs = pckde(latents)
-print(probs.min(), probs.max(), probs.mean(), probs.std())
-std_probs = (probs / probs.std())
-print(std_probs.min(), std_probs.max(), std_probs.mean(), std_probs.std())
-lats = latents[180:184]
-results_pcs = pckde.density(lats,)
-results_npc = pckde.density(lats, use_pcs=False)
-print(4, results_pcs[0])
-print(4, results_pcs[1])
-# print(4, results_pcs[2])
-# print(4, results_pcs[3])
 
-lats = latents[180:185]
-results_pcs = pckde.density(lats,)
-results_npc = pckde.density(lats, use_pcs=False)
-print(5, results_pcs[0])
-print(5, results_pcs[1])
-# print(5, results_pcs[2])
-# print(5, results_pcs[3])
+all_results = []
+ends = [traj[-1] for traj in traj_indices]
+x = []
+for i in range(20, len(latents)):
+    lats = latents[:i+1]
+    if i in ends:
+        print(i, len(lats))
+    all_results.append(pckde.density(lats)[:2])
+    x.append(i)
+
+
+import matplotlib.pyplot as plt
+
+plt.plot(x, [ar[0] for ar in all_results], label='density')
+plt.scatter(ends[:n_trajs], [all_results[i-1-20][0] for i in ends[:n_trajs]], c='r', label='new relaxation')
+plt.xlabel('Number of images in the dataset')
+plt.ylabel('Cumulative Latent Density')
+plt.legend()
+plt.savefig('latent_density_plot.png')
+plt.show()
+
+# trajs = []
+# lats = []
+# for indices in traj_indices:
+#     if len(indices) > 100:
+#         trajs.append([images[index] for index in indices])
+#         lats.append([latents[index] for index in indices])
+
+# all_results = []
+# for i in range(len(trajs)):
+#     sample = [_ for traj in trajs[:i+1] for _ in traj]
+#     print('sample %d: %d images' % (i, len(sample)))
+#     sample_lats = np.array([_ for lat in lats[:i+1] for _ in lat])
+#     all_results.append(pckde.density(sample_lats))
