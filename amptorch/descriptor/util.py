@@ -38,7 +38,7 @@ def get_hash(image):
 
 
 def validate_image(image):
-    image.wrap()  # return atoms outside periodic boundaries to position inside cell
+    # image.wrap()  # return atoms outside periodic boundaries to position inside cell
     if np.any(image.get_scaled_positions() > 1.) or np.any(image.get_scaled_positions() > 1.):
         # if atom outside boundaries on non-periodic face, throw error
         raise ValueError(

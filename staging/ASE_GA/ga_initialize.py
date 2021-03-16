@@ -10,7 +10,7 @@ import numpy as np
 import os
 
 
-def init_slab_cluster_ga(cluster_composition, population_size=20, db_file='gadb.db', ratio_of_covalent_radii=0.7):
+def init_slab_cluster_ga(cluster_composition, db_file='gadb.db', ratio_of_covalent_radii=0.7):
     slab = fcc100('Au', size=(8, 8, 4), vacuum=12.0, orthogonal=True)
     slab.pbc[2] = True
     slab.set_constraint(FixAtoms(indices=[i for i, atom in enumerate(slab) if atom.position[2] < 13.]))

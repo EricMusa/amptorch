@@ -102,18 +102,20 @@ def run_calculations(elements):
     return all_results
 
 
-morse_data_dir = "morse_params"
-if not os.path.isdir(morse_data_dir):
-    os.makedirs(morse_data_dir)
+if __name__ == 'main':
 
-cu_zn_o_morse_data = run_calculations(["Cu", "Zn", "O"])
-with open(os.path.join(morse_data_dir, "cu_zn_o_morse_data.json"), "w") as f:
-    json.dump(cu_zn_o_morse_data, f)
+    morse_data_dir = "morse_params"
+    if not os.path.isdir(morse_data_dir):
+        os.makedirs(morse_data_dir)
 
-pt_ce_o_morse_data = run_calculations(["Pt", "Ce", "O"])
-with open(os.path.join(morse_data_dir, "pt_ce_o_morse_data.json"), "w") as f:
-    json.dump(pt_ce_o_morse_data, f)
+    cu_zn_o_morse_data = run_calculations(["Cu", "Zn", "O"])
+    with open(os.path.join(morse_data_dir, "cu_zn_o_morse_data.json"), "w") as f:
+        json.dump(cu_zn_o_morse_data, f)
 
-rh_ti_o_morse_data = run_calculations(["Rh", "Ti", "O"])
-with open(os.path.join(morse_data_dir, "rh_ti_o_morse_data.json"), "w") as f:
-    json.dump(rh_ti_o_morse_data, f)
+    pt_ce_o_morse_data = run_calculations(["Pt", "Ce", "O"])
+    with open(os.path.join(morse_data_dir, "pt_ce_o_morse_data.json"), "w") as f:
+        json.dump(pt_ce_o_morse_data, f)
+
+    rh_ti_o_morse_data = run_calculations(["Rh", "Ti", "O"])
+    with open(os.path.join(morse_data_dir, "rh_ti_o_morse_data.json"), "w") as f:
+        json.dump(rh_ti_o_morse_data, f)
