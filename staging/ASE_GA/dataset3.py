@@ -32,6 +32,7 @@ from ase.formula import Formula
 from ase.visualize import view
 from ase import Atoms, units
 from ase.calculators.emt import EMT
+from better_morse import ParametricMorsePotential
 
 
 def get_slab():
@@ -62,44 +63,11 @@ def get_slab():
         atom_numbers=unique_atom_types, ratio_of_covalent_radii=0.7
     )
 
-    atom_number_selections = [
-        atom_numbers,
-        ["Pt", "Ag"],
-        ["Pt", "Ag", "Pt", "Ag", "Pt", "Ag"],
-        ["Pt", "Ag", "Pt", "Ag", "Pt", "Ag", "Pt", "Ag", "Pt", "Ag"],
-        [
-            "Pt",
-            "Ag",
-            "Pt",
-            "Ag",
-            "Pt",
-            "Ag",
-            "Pt",
-            "Ag",
-            "Pt",
-            "Ag",
-            "Pt",
-            "Ag",
-        ],
-    ]
-    gas_cluster_sgs = [
-        StartGenerator(
-            Atoms(cell=slab.cell), an, blmin, box_to_place_in=[p0, [v1, v2, v3]]
-        )
-        for an in atom_number_selections
-    ]
-    slab_cluster_sgs = [
-        StartGenerator(slab, an, blmin, box_to_place_in=[p0, [v1, v2, v3]])
-        for an in atom_number_selections
-    ]
+    slab_cluster_sg = StartGenerator(
+        slab, atom_numbers, blmin, box_to_place_in=[p0, [v1, v2, v3]]
+    )
 
-    print("StartGenerators created, returning")
-    # if not os.path.isfile(db_file):
-    #     print('creating DB file')
-    #     d = PrepareDB(db_file_name=db_file,
-    #                 simulation_cell=slab,
-    #                 stoichiometry=atom_numbers)
-    return slab, gas_cluster_sgs[0], slab_cluster_sgs[0]
+    return slab, slab_cluster_sg
 
 
 def optimize(atoms, opt, trajectory, fmax=0.05, steps=200, **kwargs):
@@ -152,52 +120,47 @@ def compress_slab_cluster(atoms, cluster_index, compression_factor=0.8):
     return atoms
 
 
-slab, gas_start_generator, slab_start_generator = get_slab()
-slab_images = dynamics(slab, VelocityVerlet, trajectory="slab_md.traj")[::10]
+slab, slab_start_generator = get_slab()
 
-gas_cluster_images = []
+atoms = slab_start_generator.get_new_candidate()
+pos149 = atoms.positions[149]
+center = (atoms.cell.array * 0.5).sum(axis=1)
+vec = center - pos149
+atoms2 = atoms.copy()
+atoms2.translate(vec)
+atoms2.wrap()
+view([atoms, atoms2])
+input(2)
+
+# atoms = slab_start_generator.get_new_candidate()
+# calc = ParametricMorsePotential('pt_ag_au')
+# atoms.set_calculator(calc)
+# dyn = SciPyFminCG(atoms, trajectory='dft_morse.traj', logfile='-')
+# dyn.run(fmax=0.05)
+# images = read('dft_morse.traj', index=':')
+# view(images)
+# input()
+
+# slab_cluster_images = dynamics(slab, VelocityVerlet, trajectory='slab_md.traj', steps=5)[::10]
+
 slab_cluster_images = []
+fixed_cluster = slab_start_generator.get_new_candidate()
+fixed_cluster.set_constraint(FixAtoms(mask=[_.symbol == "Au" for _ in fixed_cluster]))
+fixed_traj = optimize(
+    fixed_cluster, SciPyFminCG, trajectory="fixed_slab_cluster_opt.traj"
+)
+cluster = fixed_cluster.copy()
+cluster.set_constraint(FixAtoms(mask=[atom.position[2] < 13.0 for atom in slab]))
+traj = optimize(cluster, SciPyFminCG, trajectory="slab_cluster_opt.traj")
+compressed_cluster = compress_slab_cluster(cluster, ["Pt", "Ag"])
+compressed_traj = optimize(
+    compressed_cluster, SciPyFminCG, trajectory="compressed_cluster_opt.traj", steps=50
+)
+dyn = dynamics(cluster, VelocityVerlet, trajectory="slab_cluster_dyn.traj", steps=200)
+slab_cluster_images += traj + compressed_traj + dyn[::10]
+print(len(slab_cluster_images), "slab cluster images total")
 
-n_gpc = 0  # 2
-n_slab_c = 10
-
-for i in range(n_gpc):
-    cluster = gas_start_generator.get_new_candidate()
-    traj = optimize(cluster, SciPyFminCG, trajectory="gas_cluster_opt_%d.traj" % i)
-    dyn = dynamics(
-        cluster, VelocityVerlet, trajectory="gas_cluster_dyn_%d.traj" % i, steps=100
-    )
-    gpc_images = traj[::5] + dyn[::5]
-    gas_cluster_images.append(gpc_images)
-    print(sum([len(l) for l in gas_cluster_images]), "GP cluster images total")
-
-for i in range(n_slab_c):
-    cluster = slab_start_generator.get_new_candidate()
-    traj = optimize(cluster, SciPyFminCG, trajectory="slab_cluster_opt_%d.traj" % i)
-    compressed_cluster = compress_slab_cluster(cluster, ["Pt", "Ag"])
-    compressed_traj = optimize(
-        compressed_cluster,
-        SciPyFminCG,
-        trajectory="compressed_cluster_opt_%d.traj" % i,
-        steps=50,
-    )
-    dyn = dynamics(
-        cluster, VelocityVerlet, trajectory="slab_cluster_dyn_%d.traj" % i, steps=100
-    )
-    # slab_c_images = traj[::5] + compressed_traj[:20] + compressed_traj[20:][::5] + dyn[::10]
-    slab_c_images = []
-    slab_c_images += traj[:20] + traj[20:-20:5] + traj[-20:]
-    slab_c_images += compressed_traj[:10] + compressed_traj[10:-20:5]
-    slab_c_images += dyn[::10]
-    slab_cluster_images.append(slab_c_images)
-    print(sum([len(l) for l in slab_cluster_images]), "slab cluster images total")
-
-all_training_images = []
-all_training_images += slab_images
-all_training_images += [_ for gc_images in gas_cluster_images for _ in gc_images]
-all_training_images += [_ for sc_images in slab_cluster_images for _ in sc_images]
-
-
+all_training_images = slab_cluster_images
 elements = np.unique([atom.symbol for atom in slab_start_generator.get_new_candidate()])
 
 
@@ -227,25 +190,25 @@ def new_config(*callbacks):
     )
     hi_res_elements = ["Pt", "Ag"]
 
-    gds.batch_add_descriptors(*low_res_g2, important_elements=hi_res_elements)
-    gds.batch_add_descriptors(*low_res_g5, important_elements=hi_res_elements)
+    gds.batch_add_descriptors(*hi_res_g2, important_elements=hi_res_elements)
+    gds.batch_add_descriptors(*hi_res_g5, important_elements=hi_res_elements)
 
     config = {
         "model": {
             "get_forces": True,
             "num_layers": 3,
-            "num_nodes": 5,
+            "num_nodes": 6,
             "batchnorm": False,
             "latent": True,  # LATENT NNP
         },
         "optim": {
             "force_coefficient": 0.25,
-            "lr": 1e-2,
+            "lr": 2e-2,
             "batch_size": 25,
             "epochs": 500,
             "loss": "mse",
             "metric": "mae",
-            "gpus": 0,
+            "gpus": 1,
             "callbacks": list(callbacks),
         },
         "dataset": {
@@ -255,7 +218,7 @@ def new_config(*callbacks):
             "save_fps": True,
             # feature scaling to be used - normalize or standardize
             # normalize requires a range to be specified
-            "scaling": {"type": "normalize", "range": (0, 1)},
+            "scaling": {"type": "standardize"},
         },
         "cmd": {
             "debug": False,
@@ -291,7 +254,7 @@ def condition(training_images):
 #     "C:\\Users\\ericm\\Documents\\Research\\Code\\Amptorch\\staging\\ASE_GA\\checkpoints\\2021-03-15-12-25-33-test"  # 2021-03-15-22-47-44-test
 # )
 # print("trainer loaded")
-
+input("holup")
 trainer = condition(all_training_images)
 
 images = all_training_images

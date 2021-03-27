@@ -17,6 +17,7 @@ class ParametricMorsePotential(Calculator):
         "cu_zn_o": "morse_params/cu_zn_o_morse_data.json",
         "pt_ce_o": "morse_params/pt_ce_o_morse_data.json",
         "rh_ti_o": "morse_params/rh_ti_o_morse_data.json",
+        "pt_ag_au": "morse_params/pt_ag_au_morse_data.json",
     }
 
     def __init__(self, morse_parameters="cu_zn_o", **kwargs):
@@ -71,7 +72,6 @@ class ParametricMorsePotential(Calculator):
             for i2, a2 in enumerate(self.atoms[:i1]):
                 elem_key = self.get_elem_key(a1.symbol, a2.symbol)
                 epsilon, rho0, r0, preF = self.morse_parameters[elem_key]
-                # preF = 2 * epsilon * rho0 / r0
                 diff = a2.position - a1.position
                 r = np.sqrt(np.dot(diff, diff))
                 expf = np.exp(rho0 * (1.0 - r / r0))

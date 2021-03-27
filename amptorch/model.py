@@ -14,7 +14,7 @@ class MLP(nn.Module):
         activation,
         batchnorm,
         n_output_nodes=1,
-        latent=False, 
+        latent=False,
     ):
         super(MLP, self).__init__()
         if isinstance(n_hidden_size, int):
@@ -43,10 +43,10 @@ class MLP(nn.Module):
 
     def forward(self, inputs):
         return self._forward(inputs)
-    
+
     def _reg_forward(self, inputs):
         return self.model_net(inputs)
-    
+
     def _lat_forward(self, inputs):
         latents = self.model_net[:-1](inputs)
         return self.model_net[-1](latents), latents
@@ -132,7 +132,7 @@ class BPNN(nn.Module):
                     n_hidden_size=num_nodes,
                     activation=activation,
                     batchnorm=batchnorm,
-                    latent=latent
+                    latent=latent,
                 )
             )
 
@@ -158,7 +158,7 @@ class BPNN(nn.Module):
                 else:
                     net_e, net_latent = results, torch.tensor([], device=results.device)
                 nets_energy_predictions.append(net_e)
-                net_latent = torch.FloatTensor(net_latent)
+                net_latent = torch.FloatTensor(net_latent, device=net_e.device)
                 # print(i, net_latent.size())
                 nets_latents.append(torch.flatten(net_latent))  # flatten first
 
