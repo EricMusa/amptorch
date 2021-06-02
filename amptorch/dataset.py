@@ -38,14 +38,14 @@ class AtomsDataset(Dataset):
 
         self.data_list = self.process() if process else None
 
-    def process(self):
-        data_list = self.a2d.convert_all(self.images)
+    def process(self, disable_tqdm=False):
+        data_list = self.a2d.convert_all(self.images, disable_tqdm=disable_tqdm)
 
         self.feature_scaler = FeatureScaler(data_list, self.forcetraining, self.scaling)
         self.target_scaler = TargetScaler(data_list, self.forcetraining)
         self.feature_scaler.norm(data_list)
         self.target_scaler.norm(data_list)
-
+        self.data_list = data_list
         return data_list
 
     @property

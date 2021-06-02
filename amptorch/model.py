@@ -148,7 +148,6 @@ class BPNN(nn.Module):
             image_idx = batch.image_idx
             sorted_image_idx = torch.unique_consecutive(image_idx)
             mask = self.element_mask(atomic_numbers)
-
             nets_energy_predictions = []
             nets_latents = []
             for net in self.elementwise_models:
@@ -158,17 +157,25 @@ class BPNN(nn.Module):
                 else:
                     net_e, net_latent = results, torch.tensor([], device=results.device)
                 nets_energy_predictions.append(net_e)
-                net_latent = torch.FloatTensor(net_latent, device=net_e.device)
-                # print(i, net_latent.size())
-                nets_latents.append(torch.flatten(net_latent))  # flatten first
+                net_latent = torch.FloatTensor(net_latent)
+                nets_latents.append(net_latent)
 
             o = torch.sum(
                 mask * torch.cat(nets_energy_predictions, dim=1),
                 dim=1,
             )
-            latent = torch.cat(
-                nets_latents, dim=0
-            )  # dim=0 --> flat, dim=1 --> rectangular
+            latent = torch.dstack(nets_latents).transpose(
+                1, 2
+            )  # concatenate and reorder axes to mimic nets_energy_predictions
+            latent = (
+                torch.unsqueeze(mask, 2) * latent
+            )  # add axis to mask and apply to latents
+            latent = torch.sum(
+                latent, dim=1
+            )  # sum along axis corresponding to elemental nets
+            latent = (
+                latent.flatten()
+            )  # squeeze from (N_atoms, N_latent_dims) to (N_atoms * N_latent_dims, )
 
             energy = scatter(o, image_idx, dim=0)[sorted_image_idx]
 
@@ -195,7 +202,7 @@ class BPNN(nn.Module):
 
 
 class CustomLoss(nn.Module):
-    def __init__(self, force_coefficient=0, loss="mae"):
+    def __init__(self, force_coefficient=0, loss="mse"):
         super(CustomLoss, self).__init__()
         self.alpha = force_coefficient
         self.loss = loss
